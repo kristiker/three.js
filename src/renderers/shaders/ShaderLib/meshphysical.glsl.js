@@ -174,6 +174,7 @@ void main() {
 	#include <alphamap_fragment>
 	#include <alphatest_fragment>
 	#include <alphahash_fragment>
+	#include <aomap_fragment>
 	#include <roughnessmap_fragment>
 	#include <metalnessmap_fragment>
 	#include <normal_fragment_begin>
@@ -189,7 +190,13 @@ void main() {
 	#include <lights_fragment_end>
 
 	// modulation
-	#include <aomap_fragment>
+	// TODO: move these in lights
+	reflectedLight.indirectDiffuse *= ambientOcclusion;
+
+	#if defined( USE_ENVMAP ) && defined( STANDARD )
+		float dotNV = saturate( dot( geometryNormal, geometryViewDir ) );
+		reflectedLight.indirectSpecular *= computeSpecularOcclusion( dotNV, ambientOcclusion, material.roughness );
+	#endif
 
 	vec3 totalDiffuse = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
 	vec3 totalSpecular = reflectedLight.directSpecular + reflectedLight.indirectSpecular;
@@ -204,6 +211,7 @@ void main() {
 		// https://drive.google.com/file/d/1T0D1VSyR4AllqIJTQAraEIzjlb5h4FKH/view?usp=sharing
 		float sheenEnergyComp = 1.0 - 0.157 * max3( material.sheenColor );
 
+		sheenSpecularIndirect *= ambientOcclusion;
 		outgoingLight = outgoingLight * sheenEnergyComp + sheenSpecularDirect + sheenSpecularIndirect;
 
 	#endif
@@ -214,6 +222,7 @@ void main() {
 
 		vec3 Fcc = F_Schlick( material.clearcoatF0, material.clearcoatF90, dotNVcc );
 
+		clearcoatSpecularIndirect *= ambientOcclusion;
 		outgoingLight = outgoingLight * ( 1.0 - material.clearcoat * Fcc ) + ( clearcoatSpecularDirect + clearcoatSpecularIndirect ) * material.clearcoat;
 
 	#endif
